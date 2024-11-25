@@ -54,6 +54,12 @@ Window create_frame(Window w) {
     c->next = clients;
     clients = c;
 
+    /* Draw decorations */
+    char *window_name = NULL;
+    XFetchName(dpy, w, &window_name);
+    draw_decorations(frame, window_name ? window_name : "Untitled");
+    if (window_name) XFree(window_name);
+
     return frame;
 }
 
@@ -85,13 +91,14 @@ void draw_decorations(Window frame, const char *title) {
 
     /* Maximize button */
     XDrawRectangle(dpy, frame, gc, width, 0, width, height);
-    XDrawString(dpy, frame, gc, width + 10, FONT_SIZE, "□", 2);
+    XDrawString(dpy, frame, gc, width + 10, FONT_SIZE, "□", 1);
 
     /* Minimize button */
     XDrawRectangle(dpy, frame, gc, 2*width, 0, width, height);
     XDrawString(dpy, frame, gc, 2*width + 10, FONT_SIZE, "_", 1);
 }
 
+/* Main event loop */
 int main(void)
 {
     XWindowAttributes attr;
@@ -153,10 +160,6 @@ int main(void)
 
             /* Map the client window */
             XMapWindow(dpy, w);
-
-            /* Draw decorations */
-            XFetchName(dpy, w, &attr.name);
-            draw_decorations(frame, attr.name ? attr.name : "Untitled");
         }
         else if(ev.type == ConfigureRequest)
         {
@@ -185,8 +188,10 @@ int main(void)
             /* Redraw decorations */
             Client *c = find_client(ev.xexpose.window);
             if (c) {
-                XFetchName(dpy, c->window, &attr.name);
-                draw_decorations(c->frame, attr.name ? attr.name : "Untitled");
+                char *window_name = NULL;
+                XFetchName(dpy, c->window, &window_name);
+                draw_decorations(c->frame, window_name ? window_name : "Untitled");
+                if (window_name) XFree(window_name);
             }
         }
         else if(ev.type == ButtonPress)
@@ -240,6 +245,8 @@ int main(void)
             int ydiff = ev.xbutton.y_root - start.y_root;
             Client *c = find_client(start.subwindow);
             if (!c) continue;
+
+            XGetWindowAttributes(dpy, c->frame, &attr);
 
             if (start.button == 1)
             {
